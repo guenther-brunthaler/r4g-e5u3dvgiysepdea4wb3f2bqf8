@@ -13,6 +13,17 @@
 #include "r4gmem_8czm5ri1pjjnj3lr8wqq0a6li.h"
 
 
+extern void *r4ga_malloc(r4g *xc, size_t bytes) {
+   void *p;
+   if (!(p= malloc(bytes))) {
+      r4g_die(
+         xc, "Failed to allocate %lu bytes of memory!", (unsigned long)bytes
+      );
+   }
+   return p;
+}
+
+
 static void r4ga_free(r4g *xc, void *related_data) {
    (void)xc;
    free(related_data);
@@ -21,11 +32,6 @@ static void r4ga_free(r4g *xc, void *related_data) {
 
 extern void *r4g_malloc(r4g *xc, size_t bytes) {
    void *p;
-   if (!(p= malloc(bytes))) {
-      r4g_die(
-         xc, "Failed to allocate %lu bytes of memory!", (unsigned long)bytes
-      );
-   }
-   r4g_add(xc, &r4ga_free, p);
+   r4g_add(xc, &r4ga_free, p= r4ga_malloc(xc, bytes));
    return p;
 }

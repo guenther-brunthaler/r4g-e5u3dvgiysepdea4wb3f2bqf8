@@ -17,9 +17,11 @@
    #include <stddef.h>
 
 
-   void *r4ga_realloc(r4g *xc, void *ptr, size_t new_size);
    void *r4g_malloc(r4g *xc, size_t bytes);
    char *r4g_strdup(r4g *xc, char const *ephemeral_string);
+
+   void *r4ga_malloc(r4g *xc, size_t bytes);
+   void *r4ga_realloc(r4g *xc, void *ptr, size_t new_size);
 
 
    #ifdef __cplusplus

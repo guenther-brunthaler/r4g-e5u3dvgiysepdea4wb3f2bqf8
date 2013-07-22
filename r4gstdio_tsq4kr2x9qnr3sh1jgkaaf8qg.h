@@ -13,6 +13,7 @@
    #ifdef __cplusplus
       extern "C" {
    #endif
+   #include "r4g_u0ywydbuiziuzssqsi5l0mdid.h"
    #include <stdio.h>
    #include <stdarg.h>
 

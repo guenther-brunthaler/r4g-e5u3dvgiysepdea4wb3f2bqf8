@@ -1,0 +1,65 @@
+Implement a global environment as a hash table.
+
+This feature will allow to replace "static" global variables in R4G applications with dynamically-allocated data available as slots in a global hash table.
+
+The idea is somewhat similar to thread-local data, minus the threads.
+
+The pointer to the hash table will be passed around as port of the r4g structure which is passed through to every r4g function.
+
+However, before implementing the global environment, the hash table shall be implemented as independent functions at first.
+
+Ideas.
+
+Four 32-bit words filled with random numbers are used as keys. This gives 128 bit identifiers which should be safe enough against accidental collisions. Using random numbers instead of UUIDs also eliminates all problems related to UUID generation (there are different kinds) and formatting.
+
+Another reason why not using UUIDs is that the keys are considered to be private to the functions which use them, just like memory addresses. They need not be formatted for display and need not be communicated across process boundaries. Therefore, there is no requirement to use anything fancy.
+
+The keys are not passed by value, only by reference. They shall normally implemented as constant static 4-element arrays, and the functions which need to access a specific global property should know the address of that array as a global constant.
+
+The data associated with a key will always be stored in the hash table.
+
+The environment therefore uses global constants to replace global variables.
+
+Only the first array element will be used as an index into the hash table. The other elements are only provided for disambiguation in case of hash collisions.
+
+32 bit should really be enough for addressing the hash table! The hash table is intended to store individual variables, not content-addressible bulk data. Such data should rather be stored as a nested hash table, if required.
+
+The hash table shall be completely dynamically allocated. Only a pointer to it shall be stored in the r4g structure later. This pointer shall be initialized to NULL by the R4G framework, but no further consideration is given to that pointer unless the hash table functions are actually invoked.
+
+Those functions will check the pointer and consider a NULL pointer to represent an empty hash table.
+
+If a new value is to be added to such a NULL table, the hash table metadata has to be created first, resulting in a resource entry for deallocating the metadata and the hash table itself at cleanup time.
+
+The hash table implementation shall be simple: An array of key/value pairs. Both are pointers. This also guarantees that each hash array element will have a size which is a power of two, assuming that the size of an address is also a power of two. Which means that the array indexing can always be done efficiently by shifting and will never require a potentially expensive multiplication.
+
+"Empty" array elements are indicated by a NULL key pointer; the value pointer shall considered to be uninitialized in this case.
+
+Collision handling is simple: Just use the next free slot. There is no external chaining.
+
+This simple approach has the drawback that removing elements would require to examine all following keys and move the last key of the collision sequence to replace the removed key.
+
+Luckily, there is little purpose in removing global variables, and so we simply won't allow it. If a hash table slot is no longer required, the corresponding value pointer can always be set to NULL in order to indicate this fact.
+
+This means that during its lifetime, the hash table will only ever grow, never shrink.
+
+To reduce the average size of collision chains, at least half the entries in the hash table shall be free at any time.
+
+The hash table will therefore be grown if it becomes too large in this regard. Growing is simple: It will be doubled in size. Then the elements will be re-distributed according to their hash values (i. e. directly using the first random number of its key; so there is not really any hashing involved).
+
+The growth operation might perhaps be implemented in-place, using realloc. But this would make things more complicated due to collision handling, and maybe it is not possible at all. To keep things simple, a new empty hash table will be allocated, the entries will be added again, and then the old table will be deallocated. The memory overhead of this approach should be tolerable, as the hash table is not intended to ever grow very large. It might even be that the memory savings achieved by simpler and shorter code will outperform the memory overhead incurred (compared to growing a single array possibly in-place).
+
+The hash table will start with an initial size of 32 entries, which requires 512 bytes of memory on 64 bit systems. This is acceptable waste even if most entries are never used.
+
+And 32 entries might very well be enough for the requirements of the application, so that the relatively expensive hash table growth operation needs never be performed.
+
+Interface:
+
+typedef uint least32_t const r4g_envkey[4];
+
+void *r4g_getenv(r4g_envkey key);
+void r4g_setenv(r4g_envkey key, void *data);
+
+The first function retrieves the currently set data pointer associated with the specified key. The second function sets the data pointer.
+
+Both functions create the hash table entry if it does not yet exist, and initialize it as NULL in this case.
+
