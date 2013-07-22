@@ -1,0 +1,26 @@
+# (c) 2013 by Guenther Brunthaler <gb_about_gnu@gmx.net>.
+#
+# This script is free software.
+# Distribution is permitted under the terms of the LGPLv3.
+
+EXTRA_DIST = autogen.sh config_helper.sh \
+	current_version.txt Makefile_am.in configure_ac.in
+
+current_version.txt: autogen.sh config_helper.sh
+	cd "$(top_srcdir)" && ./config_helper.sh --detect-version $@
+
+Makefile.am: current_version.txt Makefile_am.in
+	cd "$(top_srcdir)" && { \
+		./config_helper.sh --makefile-header \
+		&& cat Makefile_am.in; \
+	} > $@
+
+configure.ac: current_version.txt configure_ac.in
+	cd "$(top_srcdir)" && ./config_helper.sh --expand-configure-ac \
+		configure_ac.in current_version.txt > $@
+
+NEWS: current_version.txt
+	cd "$(top_srcdir)" && ./config_helper.sh --update-news $@
+
+ChangeLog: current_version.txt
+	cd "$(top_srcdir)" && ./config_helper.sh --update-changelog $@
