@@ -1,0 +1,41 @@
+Short usage notes on the R4G framework
+=======================================
+
+Format of this file: Long lines (essentially paragraphs), ASCII characters, UNIX line endings.
+
+All symbols of the public interface have a prefix of "r4g". That is short for "Revision Control System, 4th Generation".
+
+All header files of the public interface contain a base-35 UUID as the last part of their name. All other header files are for internal use by the framework functions only and should not be used by application code.
+
+The UUID in the header file names is part of the interface. It is guaranteed never to change, even though the "human readable" part of the file name can change at any time. In such cases, the new name can easily be found out by looking which updated new file name contains the same UUID as the known old file name.
+
+Most R4G functions expect a parameter of type "r4g" as their first argument, which is a pointer to the current resource context. It is normally called "xc", but this is just a voluntary convention.
+
+Functions with the prefix "r4g_" are expected to automatically record any resources allocated to the current resource context (represented by the r4g pointer).
+
+Such resources can be freed by a call to r4g_free() or r4g_die().
+
+Functions which require the r4g pointer just for calling r4g_die() in case of an error, but which do not add any allocated resources to the resource context, have the prefix "r4ga_" - the "a" is for "aware". That is, such functions integrate into the R4G framework regarding error handling, but do no automatic resource management.
+
+Examples are the functions r4g_malloc() which allocates a memory block and records it in the current resource context, while r4ga_realloc() reallocates a memory block but does not track this in the resource context.
+
+Generally, "r4ga_" functions are functions otherwise unrelated to the R4G framework which have only been wrapped in order to call r4g_die() in case of an error.
+
+Before any other R4G functions can be used, a resource context must be allocated. This is accomplished by the function r4g_create(int errcode). This function allocates and returns the context and never returns in case of an error. In the latter case, it prints an error message to stderr and terminates with exit(errcode).
+
+After a resource context has been created, the remaining framework functions can be called.
+
+Before an application terminates, the recorded resources need to be freed.
+
+This can happen in 2 ways: Either by the application itself calling r4g_free(xc, 0) or by anyone calling r4g_die() which calls r4g_free internally before exiting.
+
+The various framework functions which allocate resources and register them with a resource context use the function r4g_add() for this.
+
+Each call to r4g_add() adds exactly one resource to the context. The function r4g_count() can be called to return the current number of resources in the context.
+
+The second argument to r4g_free() is the number of resources *not* to free, i. e. to keep.
+
+Every resource context is a resource itself, and contains itself as the first resource. Therefore r4g_count() will always return at least 1, and r4g_free(xc, 0) deallocates everything including the resource context itself.
+
+The resource context generally acts like a LIFO: r4g_add adds new resources at the end, and r4g_free always deallocates the resource from the end in the reverse order of which they have been allocated.
+

@@ -1,0 +1,54 @@
+In some situations, a branch or archive might not contain all required files
+and will reference other locations for its dependencies.
+
+Usually this would be covered by listing some URLs, but the Internet is a
+rapidly changing environment.
+
+New TLDs come, old ones being phased out, Internet providers go bankrupt,
+merge or are being taken over, often enough leading to the change of server
+names in URLs.
+
+Trademark issues are another reason why server names - and thus URLs - change
+over time in many situations, and are therefore not useful as long-lasting
+references where to find anything.
+
+I therefore avoid using URLs when referencing branches or download locations,
+but rather refer to unique file- or directory names to be found by a search
+engine.
+
+For that reason, all my Bazaar branches have a UUID as the last part of the
+name - such as in
+
+trunk-jv3gwuidf2ezyr5vbqavqtxyh
+
+The part before the last dash in the name is the human-readable branch name,
+and it does not need to be unique. It is just a general hint what the branch
+contains. It might change in the future, although it usually won't.
+
+The really important part is only the 25-character BASE-35 encoded DCE UUID at
+the end of the directory name.
+
+The best way to find such a resource is therefore using an arbitrary Internet
+search engine.
+
+If the search engine allows wildcards for suffix searches, it might be best to
+search for the above branch using a glob pattern like
+
+*-jv3gwuidf2ezyr5vbqavqtxyh
+
+or a Regexp like
+
+-jv3gwuidf2ezyr5vbqavqtxyh$
+
+or
+
+.*-jv3gwuidf2ezyr5vbqavqtxyh
+
+depending on the anchor matching behavior used by the Regex implementation.
+
+For locating web pages rather than branch directories, a common suffix like
+.html might have to be added after the UUID.
+
+In any case, the advantage of the approach is that changing DNS names do not
+matter, and even reorganizing the directory structure within the server won't
+render the content unlocatable.

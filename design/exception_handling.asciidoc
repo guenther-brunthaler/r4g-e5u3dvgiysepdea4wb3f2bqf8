@@ -1,0 +1,142 @@
+Exception Handling in Resource Control 4th Generation
+=====================================================
+Günther Brunthaler <gb@xquad.emgenxx69lwyn5ctlr4nl64ul.local>
+
+Real exceptions are anonymous
+-----------------------------
+In r4g, all exceptions are anonymous.
+
+That is, there is no (intended) way of identify the "type" or "origin" of an exception - at least not in a way to be exploited by the program.
+
+Actually, an exception might contain an error message as well as an error location identifier.
+
+But both those properties are optional, and there is no guarantee they won't change.
+
+Error message
+~~~~~~~~~~~~~
+The error message might be translated into the local language, or have been reformatted for display purposes.
+
+Error location identifier
+~~~~~~~~~~~~~~~~~~~~~~~~~
+The error location identifier will usually not change, but it is possible that the more such identifiers might be added at a later time, returning a more detailed and thus different identifier for the same exception in the future.
+
+Error location identifiers are primarily intended to be backwards-compatible, but there is no guarantee regarding forward-compatibility. Error location identifiers might even be removed completely when parts of the code are re-implemented without reusing old code.
+
+Therefore, code that "catches" exceptions should handle them in a generic way and should not try to somehow identify the origin of the exception.
+
+For situations where identification of an exception is assumed to be useful in certain situation, the callee must not throw an exception but rather implement the "exception-less exception catching"-protocol instead.
+
+This works as follows.
+
+All r4g callees receive, directly or indirectly via their arguments, a pointer to an exception context containing directly or indirectly the following properties:
+
+"suppressed_errors" and "ok" - integer variables.
+"origin" - an error location identifier.
+"message" - the error message.
+
+The latter two have already been explained above.
+
+The "ok" field
+~~~~~~~~~~~~~~
+"ok" is the most important variable.
+
+It tells whether an exception is currently "active" (that is, not yet completely handled) or not.
+
+If "ok" is true (i. e. not zero), no exception exists and the remaining 3 fields are considered indeterminate.
+
+If "ok" is false (i. e. zero), then the other fields are valid and an exception is active.
+
+In this case, "origin" and "message" may or may not contain an error location and message.
+
+The "suppressed_errors" field
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In any case, when a exception is created, the "suppressed_errors" field is always set to zero.
+
+This means that "origin" and "message" refer to the current exception.
+
+However, during exception handling, more exceptions might be thrown although the current exception has not been completely handled yet.
+
+Saturated Increment
+^^^^^^^^^^^^^^^^^^^
+In those cases, code which wants to throw an exception, must not modify (or even look at) the "message" and "origin" fields, but rather perform a saturated increment of "suppressed_errors" instead.
+
+"Saturated increment" means the counter will be incremented until its maximum possible value, and will not be incremented further.
+
+Which means that the maximum value means "that many or even more additional exceptions have occurred during the handling of the exception to which 'origin' and 'messages' refers", while smaller values mean "exactly this number of follow-up errors occurred".
+
+So far for "real" exceptions - and now for the beforementioned "exception-less exception catching"-protocol.
+
+The "exception-less exception catching"-protocol
+------------------------------------------------
+This protocol exploits the fact that "ok" can have many "true" values - all values other than zero are interpreted as "true".
+
+The protocol works by letting the caller set "ok" to some negative "query" value.
+
+What this value exactly means is up to the callee and should be documented by it. The protocol just requires that the value is negative.
+
+The "exception catching"-code
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Anyway, the callee needs to understand the value and interpret it as an "exception catching code".
+
+That is, if a condition arises during callee execution that normally triggered a particular exception covered by the "exception catching code", no exception should be generated.
+
+The "exception identification"-code
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Instead, the callee should replace the "exception catching code" in the "ok" field by an "exception identification code", which must also be negative and might also be the same as the "exception catching code".
+
+The callee must than return to the caller, returning an invalid or arbitrary return value which must not be used by the client.
+
+If no exception arises, the callee must change "ok" to any positive value (typically 1 but this is not required) if it was set to a negative value on entry.
+
+What the caller needs to check
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The caller needs to check whether "ok" is still negative after the callee has returned.
+
+If so, it needs to exactly compare "ok" - because even if it is negative, only the exact value tells the exact cause of the exception.
+
+What to do if the caller does not recognize the exception
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+If the "OK" value is not known by the caller, it should throw throw an unspecific error by itself. This is not supposed to happen, but may be if the callee's has augmented or even changed the range of exceptions covered by a particular "exception catching code". This is a severe protocol violation and should be interpreted as a changed callee API contract which needs to be examined by the developer.
+
+Most callees supporting the "exception-less exception catching"-protocol will only support a single exception catching code for the one thing they are doing - typically the constant -1.
+
+Multiple exception types supported by the callee
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+But callees doing more complicated things might define an enumeration of distinct exception-catching codes for different exception types.
+
+They might even define bitfields within the code to subclass the exception, or use the (negated) product of prime factors.
+
+The caller might incorrectly assume the callee supports the protocol
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+An important principle is to NEVER rely on the regular return values of the callee in case of an "exception-less exception". It must especially NEVER be assumed that the return value has been set up especially for providing additional information about the exception instead of the regular meaning of the return value.
+
+The reason is that the callee might not support the "exception-less exception catching"-protocol at all!
+
+Maybe the caller thinks so, but the callee might be an older version than the caller thinks and not yet support the protocol.
+
+And callees which do not support the "exception-less exception catching"-protocol work differently: In case no exception is to be thrown, they never even look at the "ok" field. They don't look whether it is negative or not, and sure as hell won't set it to a positive value.
+
+In such a case, the caller will get back the same value as an "exception idenfification code" which it set as the "exception catching code" before - although no exception occurred.
+
+In this case, the caller will incorrectly assume an "exception-less exception" has occurred, although in reality the callee is broken because it does not support the interface as it is supposed to.
+
+But at least this unfortunate situation will not go by undetected: The caller will interpret it as an exception, and the whole operation will fail. It will not fail for the right reasony, but it will. And the developer will eventually find out what caused the exception - namely the callee not supporting the "exception-less exception catching"-protocol as expected.
+
+However, this situation is also the reason why interpreting the return value in case of an "exception-less exception" would a bad idea: If the callee does not support the "exception catching code", it will return its normal return value instead.
+
+The caller will assume an exception has occurred, and would try to interpret the return code as some value specific to the exception - but it is actually examining a regular return value!
+
+This situation must be avoided, and therefore the rule applies that the caller must not use the return value in case of an exception in any way.
+
+When the protocol is not sufficient
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In situations where a simple negative integer value is not enough information to pinpoint the exception, the API of the function needs to be changed and additional dedicated output parameters for returning additional exception information need to be provided.
+
+Such parameters can of course by used as a complete replacement of the "exception-less exception catching"-protocol. However, this requires passing additional arguments which is overhead in case no exception occurred.
+
+The advantage of the "exception-less exception catching"-protocol is that it required no change of the API - only specific internal behavior.
+
+It also allows "upgrading" callees which did not support "exception-less exception catching" before to do so in the future without breaking the API: Older callers will never use the protocol, but newer callers can.
+
+Also, the amount of supported exception catching codes can be increased, as long as it is done in a backwards-compatible way. (This is also the reason why callers need to check the exception idenfification codes exactly, throwing a "general exception" or "unexpected exception type" kind of message otherwise.)
+

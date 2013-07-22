@@ -1,0 +1,62 @@
+Resource Vector Framework Utilities
+===================================
+Guenther Brunthaler <gb_about_gnu@gmx.net>
+
+(c) 2013 by Guenther Brunthaler
+This project is free software.
+Distribution is permitted under the terms of the LGPLv3.
+
+The resource-vector paradigm is a very simple way of automatically managing
+resources in a C program.
+
+There is a single resizable array - the "resource vector" where cleanup
+functions for allocated resources can be appended. The vector will be
+reallocated as it grows.
+
+The rvec_add() function adds user-defined cleanup functions to the vector.
+
+The rvec_free() function calls the cleanup functions in the vector in the
+reverse order the functions have been added (that is, from the end of the
+array towards the beginning).
+
+The array shrinks while rvec_free() is working.
+
+It is possible to specify that rvec_free() should only deallocate resources
+until the resource vector has shrunk a certain minumum size.
+
+By remembering the current vector size and later calling rvec_free() to shrink
+the array back to that former size, all newer resources will be deallocated
+while the older ones remain available.
+
+Obviously, this scheme might fail horribly in a multithreading scenario, but
+it is very simple and well suited for typical command line applications.
+
+The source files in this project implement the resource vector paradigm and
+provide resource wrappers for objects like files or memory buffers.
+
+How to use
+----------
+
+* Copy the required source files to your project.
+
+* Don't forget to mention the copyright conditions and where the files came
+  from. It is not necessary to include the specific file names in the
+  attribution, because the files contain copyright comments themselves.
+
+* The files are optimized for static linking without relying on function-level
+  linking support by the linkage editor. This means that only things which are
+  known to be used together have been put into the same source files. Things
+  which will only be required optionally have been put into separate source
+  files. This allows only to include the source files actually required by
+  your project. It is allowed to omit the remaining source files from your
+  distribution, as long as you provide a reference where the full set of files
+  can be obtained from.
+
+* All "public" header files (interfacing to your client code) contain a
+  base-35 encoded UUID as the last part of the names. The header files with
+  short names, if any, are only internal header files used by the framework
+  source files themselves.
+
+* All public header files contain an #include statement for including
+  themselves as a comment at the beginning of the file. This allows to easily
+  copy the #include directive into your source files from there.

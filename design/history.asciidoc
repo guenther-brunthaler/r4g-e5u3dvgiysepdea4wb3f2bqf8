@@ -1,0 +1,109 @@
+History of Resource Control Systems
+===================================
+Günther Brunthaler <gb@xquad.emgenxx69lwyn5ctlr4nl64ul.local>
+
+During the decades, the author has designed and implemented several approaches to resource control for use by the C language.
+
+This document attempts to give an overview over the different approaches.
+
+Generation 1: The AMIGA "utility" library
+-----------------------------------------
+In the late 80's and early 90's, the Commodore AMIGA was using an operating system unlike modern operating systems.
+
+Except for the latest of models, the AMIGA did not feature a memory management unit (MMU), and therefore no virtual memory either.
+
+AMIGA "Tasks" were more like threads than processes in modern operating system. But tasks were the only available unit of scheduling.
+
+All tasks accessed the same physical memory without any protection against invalid accesses from an ill-behaved task - actually it is a miracle that the system still ran so well.
+
+Also, except from a very small set of per-task parameters like the current directory, the tasks also shared the same resources like memory or file system objects.
+
+This continued into higher layers like the GUI libraries as well.
+
+As a consequence of this almost non-existant isolation of tasks, proper resource cleanup was of ultimate importance on the AMIGA in order to avoid resource leaks: Any single chunks of memory not properly deallocated when the program terminated, created a memory leak that lasted until to the next reboot.
+
+This also included resources lost due to crashed programs.
+
+Ironically, the AMIGA operating system was making intensive use of dynamically allocated resources - nearly everything required for interaction with the operating system needed to be allocated and deallocated dynamically.
+
+As an advantage, the AMIGA multitasking system only incurred a very small overhead over "bare-metal" programming - about 3 %. And even though the multitasking only used time-slicing on a single physical processor, it was the smoothest multi-tasking I have ever experienced (when assigning task priorities properly). In comparison, Windows as well as Linux are not nearly as responsive to user input as the Amiga OS was.
+
+Anyway - the biggest challenge on the AMIGA was to ensure proper resource deallocation of dynamically allocated resources, especially during error handling.
+
+The "utility" library was my first approach to address this issue.
+
+It featured the concept of "deallocators" - callbacks installed for every dynamically allocated resource to be automatically invoked when the resource had to be deallocated.
+
+In contrary to all of my newer approaches, these callbacks were indeed invoked automatically - via manipulation of the function's return addresses and injection auf machine-code automatically generated on-the-fly on the stack.
+
+Unfortunately, these mechanisms were highly platform-, hardware- and operating-system-specific, and were as such not portable to later platforms.
+
+Generation 2: The "RCS" library
+-------------------------------
+This approach was the result of my attempts to port the basic functionality of the "utility"-library to MS-DOS and Microsoft Windows.
+
+"RCS" was an acronym for "Resource Control System". Rather unfortunately, "RCS" is also the name of a well known revision control system. But I coined the name before I knew the other "RCS", and so the name sticked.
+
+Actually there were multiple variants of this approach, but they are simliar enough to be considered basically the same thing.
+
+The RCS library started with MS-DOS and its segmented real-mode memory, continued with Windows 3.x's segment-descriptor-based design, and was eventually simplified to the flat 32 bit address space of Windows 95 and later Windows NT and XP.
+
+The deallocator-concept was maintained for the most part, but setjmp/longjmp replaced the automatic stack unwinding and deallocator-invocations as well as exception processing as compared to the auto-generated handler code of the AMIGA version.
+
+It worked quite well, but was heavily relying on macros for exception handling primitives, complicated to use and was ugly as hell to look at the end result.
+
+One of the core problems with this design was that the ANSI C standard required use of "volatile" for all  variables which shall "survive" a longjmp with guarantee.
+
+But "volatile" variables disable most optimizations of the C compiler as well, leading to sub-optimal code efficienty. Also, setjmp/longjmp themselves are rather expensive operations, reducing overall program efficiency even further.
+
+Another problem of longjmp is that it cannot cross remote procedure calls or even library calls under some conditions.
+
+Generation 3: The "sxc" library
+-------------------------------
+"SXC" is an acronym for "[S]tructured E[x]ception Handling in/for '[C]'".
+
+This approach was a total deviation from the previous approaches. It was based on the general idea of GLib's "GError" concepts, but much more elaborated.
+
+The basic idea was that all exceptions have to be converted into normal results of the function "throwing" or propagating an exception, and that the caller of every such function needed to check whether the function returned due to an exception or normally.
+
+The concept even included its very own object component model, called "Descriptor Component Model", which was based on COM but differed from it in various aspects, mostly regarding to inheritance.
+
+The SXC approach was the cleanest of all approaches so far and completely free of the problems induced by longjmp.
+
+It also avoided using macros for flow control, resulting in a much more "traditionally-looking" C code (especially when compared to code using the "RCS"-library).
+
+However, after some time it became clear that the manual exception checking required by the callers was a really big annoyance.
+
+Even though the coding conventions suggested a uniform way of exception checking no matter what function was called, it was still possible to simply forget the exception checking alltogether.
+
+After all, I consider this approach doomed: It can only be implemented in a useful way in combination with some sort of precompiler or elaborated macro preprocessor (M4 perhaps; CPP seems not powerful enough) which adds the required exception checks automatically.
+
+However, GLib has taught us what the logical consequence of such a step ist: Sooner or later, we are looking at a completely new language, and no longer C!
+
+I am certain, Vala is essentially nothing else than the evolution of GLib's macros and error handling conventions - first macros, than a preprocessor and finally a completely new language.
+
+Though less certain, C#'s development might also be a partial consequence of the "heavy macro orgies" or the complex C++ template classes "celebrated" by the MFC, ATL and COM C/C++ header files - or rather an attempt to avoid them.
+
+I did not want to go that way - "C" should remain "C". Therefore the SXC approach was finally terminated.
+
+Generation 4: The "r4g" framework
+----------------------------------
+This approach was initially named "rvec" for "Resource Vector". This was due to the fact that its resources were recorded in a single reallocatable array. However, this is an implementation detail which is highly likely to change, and therefore it was eventually renamed into "R4G" - "Resource Control, 4th Generation". I might have called it "RC4" instead, but there is a well-known encryption algorithm of that name already. (Obviously, new future approaches to resource control are likely to be called "r5g", "r6g" etc.)
+
+This is an attempt to combine some of the advantages of the RCS and SXC libraries.
+
+First of all, the general "exception checking" of SXC is history now. longjmp & error handler callbacks are back.
+
+Functions which throw an exception do not return - at least not directly to the caller. This eliminates 90 % of the headaches of practical SXC programming.
+
+On the other hand, the "exceptionless exception-catching"-paradigm of SXC survived.
+
+This paradigm states that exceptions are anonymous. Exceptions contain an optional error message and an an optional error location identifier, but none of this can be used to reliably identify an exception.
+
+Only generic exceptions can be caught, displaying their error message if desired. Handing exceptions differently based on their type is not supported by this paradigm.
+
+Instead, the caller of a function can directly request that this function returns special error codes instead of raising an exceptions for specific conditions. This is optional and must be supported and documented by a function specifically - otherwise the function may only throw an anonymous exception.
+
+Another feature kept from SXC is the restriction that only the first error message is considered significant. Follow-up errors are ignored (regarding the error message), but there is a "number of follow-up errors"-counter which will be incremented (saturated increment) for each suppressed follow-up exception.
+
+Note that generation 4 implementation and design are work in progress - not all things are implemented yet, other aspects might be changed.
