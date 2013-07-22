@@ -14,6 +14,7 @@
       extern "C" {
    #endif
    #include <stddef.h>
+   #include <stdint.h>
 
 
    typedef struct {
@@ -36,6 +37,10 @@
    size_t r4g_count(r4g *xc);
    void r4g_free(r4g *xc, size_t keep_num_resources);
    void r4g_forget(r4g *xc, size_t first_resource_index, size_t count);
+   void r4g_assoc(
+      r4g *xc, uint_least32_t const *rand_key, void *related_data
+   );
+   void *r4g_lookup(r4g *xc, uint_least32_t const *rand_key);
    void r4g_die(r4g *xc, char const *msg, ...);
 
 

@@ -50,13 +50,19 @@ static void free_context(r4g *xc, void *related_data) {
 extern r4g *r4g_create(int error_exit_code) {
    struct r4g_internal *fc;
    if (!(fc= malloc(sizeof *fc))) exit(error_exit_code);
-   #ifndef NDEBUG
-      (void)memset(fc, (int)(char)(unsigned)-1, sizeof *fc);
-   #endif
-   fc->destruction_notification= 0;
+   /*
+    * Instead of initializing all variables, zero out the whole memory
+    * block as if it was a static variable without initializer.
+    *
+    * Then we only need to explicitly initialize variables *not* to be
+    * initialized with zero, '\0' or NULL.
+    *
+    * This will also automatically initialize any pointer slots which are
+    * only used if associated support code has been linked to the application,
+    * incurring no overhead in code size in the opposite case.
+    */
+   (void)memset(fc, 0, sizeof *fc);
    fc->xc.ok= 1;
-   fc->resources= 0;
-   fc->num_resources= fc->reserved_resources= 0;
    fc->failure_exit_code= error_exit_code;
    r4g_add(&fc->xc, free_context, fc);
    return &fc->xc;
