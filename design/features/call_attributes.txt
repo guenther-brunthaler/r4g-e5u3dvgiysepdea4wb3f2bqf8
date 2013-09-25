@@ -1,0 +1,51 @@
+Function Call Attributes
+========================
+C++ supports declarators like throw() or "mutable" which C lacks.
+
+R4G uses a manual name-mangling scheme to encode such declarators into the function name, allowing the human reader of a source file to infer the associated semantics without a requirement to study the function's documentation for this purpose.
+
+The mangling consinst of adding a suffix "_c" (for "call attributes") to the end of the function name, being followed by a single digit encoding a combination of supported attributes.
+
+The digit calculates as follows (start with a value of 0):
+Bit 0 (add 1 to digit value) for "will never fail" functions.
+Bit 1 (add 2 to digit value) for "mutably constant" member functions.
+
+"Will never fail"-Functions
+---------------------------
+Function names with such a suffix refer to functions which cannot fail at all.
+
+They will never return error codes (unless returning an already determined error code is their only purpose) or throw exceptions.
+
+This call attribute is typically assigned to simply "get"-style member functions which only return values from the internal instance variables of an already existing object.
+
+Using this attribute normally also requires that no dynamic allocation will take place, because such allocations could always fail due to memory shortage.
+
+To the caller, this attribute means that no checks are required whether the called function has failed. It never will.
+
+To the callee, the attribute means that it must only use operations which cannot fail (unless catastrophic hardware failure occurs).
+
+In particular, the result must be based on already-existing information. It may include calculations, but must not read information from external sources such as files or from the network which could always fail for a multitude of reasons.
+
+"Mutably constant" Member Functions
+-----------------------------------
+C++ supports the "mutable" declarator to mark "external" fields which are physically part of a structure, but do not logically belong to it.
+
+A typical application are "const" objects in a internally-linked list.
+
+The observable internal state of the objects will not change during the lifetime of the list, but new objects may be added to the list, resulting in changes of the internal linkage-pointer fields of the "constant" objects.
+
+Those linkage fields are hidden from the object's clients, so any changes in those fields have no effect on the client's perceived constantness of the object.
+
+However, it is not possible to define pointers to such objects as "const" anymore, because the object's internal state actually *does* change, even though it's just the linkage pointers.
+
+In such cases, the "mutably constant" call attribute comes handy.
+
+It specifies that the primary object on which the function operates will not be modified in any way observable by the client much like using a "const" pointer.
+
+However, some hidden internal fields of the object which do not effect its externally perceivable behavior might be modified, disallowing to actually use a "const" pointer.
+
+This call attribute also implies that the first function argument must be a non-"const" pointer to the object of which the function acts as an "observably constant" member function for.
+
+Alternatively, the first argument may be a "handle" to such an object, like an integer index into a global table of related objects or something similar.
+
+In any case, the first function argument must uniquely identify the object to be operated on somehow.
