@@ -1,0 +1,36 @@
+In R4G there are no exceptions which are not also errors
+========================================================
+
+In R4G, all exceptions are anonymous.
+
+They may contain an error message, but this is not required for internal errors which are not expected to be thrown during any forseeable circumstances.
+
+Therefore, the absence of an error message does not mean an exception is not an error.
+
+Also, exceptions accompany no identifiying information such as error numbers which could be used to classify an exception into categories such as "error", "warning", "informational" etc.
+
+Exceptions have to "type", no class and are not part of any kind of inheritance hierarchy.
+
+It is therefore neither possible to distinguish exception types from one another, nor determine whether an exception is actually an error or something else.
+
+"Catching an exception" in R4G is therefore different from JAVA or C++ where the exception type is known and can be compared.
+
+In R4G, only error exceptions are supported, and therefore the terms "error" and "exception" can be used interchangeably in most contexts.
+
+"Catching" an exception in R4G consists of assuming that some operation of a guarded section of code has failed and that the error message describes the problem, but there is *no way* to tell what part of the whole operation has actually failed.
+
+If it is necessary to distinguish different sub-operations which may fail, use an individual exception handler for each sub-operation rather than relying on an error code to tell what went wrong.
+
+This approach is much safer than relying on error codes, because sometimes the same error-codes can be triggered by nested sub-operations and the top-level operation, leading to incorrect judgement from where the error originated.
+
+Error codes are not even useful for debugging applications, because in those cases only the code locations where the error conditions have been detected are of actual interest.
+
+But there may be many code locations which different different problem aspects which all lead to the same error message and "error number" eventually.
+
+Therefore, R4G does not use error identifiers at all.
+
+Instead, it allows to specify identifiers for code locations where the problems were detected.
+
+Those identifiers are not useful for identifiying errors at run time either and will only be used as part of the error messages.
+
+But they are all a developer needs to know in order to locate exactly the particular code location which triggered an error message.
