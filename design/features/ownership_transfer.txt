@@ -14,28 +14,28 @@ optional in/out
 
 All combinations are encoded as a 3-bit integer with the following bit assignments:
 
-Bit 0: "in"
-Bit 1: "out"
-Bit 2: "optional"
+Bit 0 (add 1 to digit value) if it is an "in" parameter.
+Bit 1 (add 2 to digit value) if it is an "out" parameter.
+Bit 2 (add 4 to digit value) if it is an "optional" parameter.
 
 For instance, "in/out" means bits 0 and 1 have to be set and bit 2 has to be clear, resulting in a binary number 011 and the corresponding integer expression 0 * 2 ^ 2 + 1 * 2 ^ 1 + 1 * 2 ^ 0, which evaluates to the integer value 3.
 
-The actual name mangling consists of appending a suffix "_o<N>" to the name of the identifier, where "<N>" is the octal number.
+The actual name mangling consists of appending a suffix "_o<N>" to the name of the identifier, where "<N>" is the integer number.
 
 The above combinations can therefore be expressed by the following suffixes:
 
 Combination     | bit 2 | bit 1 | bit 0 | integer equivalent | suffix
 ----------------------------------------------------------------------
-in              | 0     | 0     | 1     | 1                  | _o1
-out             | 0     | 1     | 0     | 2                  | _o2
-in/out          | 0     | 1     | 1     | 3                  | _o3
-optional in     | 1     | 0     | 1     | 5                  | _o5
-optional out    | 1     | 1     | 0     | 6                  | _o6
-optional in/out | 1     | 1     | 1     | 7                  | _o7
+in              | 0     | 0     | 1     | 1                  | "_o1"
+out             | 0     | 1     | 0     | 2                  | "_o2"
+in/out          | 0     | 1     | 1     | 3                  | "_o3"
+optional in     | 1     | 0     | 1     | 5                  | "_o5"
+optional out    | 1     | 1     | 0     | 6                  | "_o6"
+optional in/out | 1     | 1     | 1     | 7                  | "_o7"
 
 Combinations containing "in" are only suitable for function parameters.
 
-Function name suffixes only refer to the function's return value, and can thus only be "out" or "optional out", because a function return value can only be an output.
+Function name suffixes only refer to the function's return value, and can thus only be "out" or "optional out", because a function's primary return value can only be an output.
 
 The Semantics Of Ownership Transfer
 -----------------------------------
