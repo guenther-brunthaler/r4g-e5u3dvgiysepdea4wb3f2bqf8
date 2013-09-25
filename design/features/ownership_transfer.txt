@@ -1,0 +1,135 @@
+Ownership Transfer Attributes
+=============================
+
+R4G uses manual name mangling to assign specific attributes to function or parameter names in order to indicate resource ownership transfers between callers and callees.
+
+The following combinations are supported:
+
+in
+out
+in/out
+optional in
+optional out
+optional in/out
+
+All combinations are encoded as a 3-bit integer with the following bit assignments:
+
+Bit 0: "in"
+Bit 1: "out"
+Bit 2: "optional"
+
+For instance, "in/out" means bits 0 and 1 have to be set and bit 2 has to be clear, resulting in a binary number 011 and the corresponding integer expression 0 * 2 ^ 2 + 1 * 2 ^ 1 + 1 * 2 ^ 0, which evaluates to the integer value 3.
+
+The actual name mangling consists of appending a suffix "_o<N>" to the name of the identifier, where "<N>" is the octal number.
+
+The above combinations can therefore be expressed by the following suffixes:
+
+Combination     | bit 2 | bit 1 | bit 0 | integer equivalent | suffix
+----------------------------------------------------------------------
+in              | 0     | 0     | 1     | 1                  | _o1
+out             | 0     | 1     | 0     | 2                  | _o2
+in/out          | 0     | 1     | 1     | 3                  | _o3
+optional in     | 1     | 0     | 1     | 5                  | _o5
+optional out    | 1     | 1     | 0     | 6                  | _o6
+optional in/out | 1     | 1     | 1     | 7                  | _o7
+
+Combinations containing "in" are only suitable for function parameters.
+
+Function name suffixes only refer to the function's return value, and can thus only be "out" or "optional out", because a function return value can only be an output.
+
+The Semantics Of Ownership Transfer
+-----------------------------------
+In R4G, "ownership transfer" means that the ownerhip of a resource is passed from caller to callee, vice versa, or even both.
+
+"Resources" can be anything from allocated memory blocks over file handles to complex dynamically allocated objects.
+
+"Ownership" primarily refers to the responsibility of deallocating the resource, but may also imply other things like privileges and capabilities.
+
+"in"-Transfer
+~~~~~~~~~~~~~
+The caller allocates or creates an object, and passes ownership to the callee.
+
+The callee has now the responsiblilty to deallocate or destroy the object at some point in time.
+
+This is also true in case that the callee fails and just returns an error to the caller: Even then, the callee must ensure that "in" resources have already been or will eventually be deallocated before throwing an exception or return an error result code to the caller.
+
+"out"-Transfer
+~~~~~~~~~~~~~~
+The callee allocates or creates an object, and passes ownership to the caller. This can be done either by assignment via reference using function arguments, or by using the function's primary return value.
+
+The caller has now the responsiblilty to deallocate or destroy the object at some point in time.
+
+In contrary to "in"-transfers, "out"-transfers only take place if the callee returns successfully.
+
+If the callee returns an error code or throws an exception, no ownership transfer to the caller takes place and it remains the callee's responsibility to deallocate any intermediately allocated partial resources.
+
+In the case that the callee returns an error code for the caller to check, any "out" parameters remain undefined.
+
+To be more specific, neither the caller nor the callee are required to initialize such "out"-parameters or set them to null or any other value in case of an exception or error return.
+
+Nevertheless, the callee is *allowed* to set any "out"-parameters in case of a failure, but the caller must ignore such set values, if any, and treat them as undefined.
+
+Callees might explicitly set "out" parameters to invalid values in debugging versions of an executable in order to spot cases where the caller illegally tries to use them anyway. But this behavior is neither mandatory nor necessary in "release"-executables.
+
+Conversely, callers initialize "out"-values with invalid values in debugging executabled in order to detect whether the callee actually sets them to value values. But again, this is neither mandatory nor necessary in "release"-executables.
+
+All "out"-transfers of a particular function invocation are atomic: Either the function succeeds and all "out"-parameters are valid. Or the function fails/throws an exception and no "out"-parameters are valid.
+
+"in/out"-Transfer
+~~~~~~~~~~~~~~~~~
+This is nothing than an optimization of letting an "in"-parameter and an "out"-parameter share the same function argument.
+
+The caller allocates or creates an object, and passes ownership to the callee.
+
+The callee has now the responsiblilty to deallocate or destroy the object at some point in time.
+
+Then the callee allocates or creates a new object, and passes ownership to the caller. It is also allowed to pass ownership of the same resource back to the caller.
+
+The caller has now the responsiblilty to deallocate or destroy the new resource at some point in time, whether or not it is actually identical to the original resource.
+
+"in/out"-transfers separate the operation of a function into two logically distinct phases.
+
+The first phase is the "in"-phase and follows the semantics of normal "in"-parameters.
+
+The second phase is the "out"-phase and follows the semantics of normal "out"-parameters.
+
+"in/out"-transfers can always be replaced by using different "in"/"out"-parameters for the same purpose, but reuse the same function argument for the "out"-transfer after the "in"-transfer has already been processed.
+
+"optional"-Transfers
+~~~~~~~~~~~~~~~~~~~~
+Without "optional", the "in", "out" and "in/out"-parameters must exactly follow the semantics outlined in the above sections.
+
+In particular, all "in"- and "in/out"-parameters must refer to a valid, existing resource when a function is called.
+
+Conversely, all "in/out"- and "out"-parameters must refer to a valid, existing resource when the callee returns to the caller without indicating an error.
+
+Although the exact interpretation of what "valid" and "existing" means varies with the resource type, it typically disallows using null-pointers and similar place-holder values with "not present" semantics to be used as inputs or outputs.
+
+The "optional" attribute modifies this normal behaviour of "in", "out" and "in/out" in order to allow such placeholder-values.
+
+"optional in" and "optional in/out" requires the callee to check whether an "in" or "in/out" parameter is actually a valid, existing resource, or just a "not used"-value like a null pointer, and only take over the ownership if it is not a "not used"-value.
+
+"optional out" and "optional in/out" requires the caller to check (after a successfuly return of the callee) whether an "out" or "in/out" parameter is actually a valid, existing resource, or just a "not used"-value like a null pointer, and only take over the ownership if it is not a "not used"-value.
+
+In other words, "optional" uses the same basic semantics as the non-"optional" variants, but requires additional checks in the callee (for "optional in" and "optional in/out") and/or the caller (for "optional out" and "optional in/out") to decide whether or not to actually transfer the ownership forth or back.
+
+The semantics how to decide whether a parameter value refers to an existing resource or whether it is just a "not valid"-placeholder is completely function-specific and needs to be documented in the function's description.
+
+Some defaults can be assumed unless the function documentation says otherwise.
+
+In particular, null-pointers may be passed instead of object addresses.
+
+For instance, a function like malloc() would be an ideal candidate for an "optional out" return value: It is either a valid allocated object which needs to be freed later using free(), or a NULL placeholder which does not need to be freed later using free().
+
+An extreme usage candidate for "optional" is the realloc() function - depending on the concrete parameter values, it can either emulate malloc() or free(), resize a memory block or move it to a different location. In this case the default assumptions of "optional" do not suffice; the function needs to document exactly under which conditions the "optional in" and "optional out"-values represent valid values and when not.
+
+Although sometimes necessary, the "optional" attribute should be used sparingly.
+
+First of all, it requires the client of a function to consult the documentation of the function, because the required checks for determining whether optional parameters are actually present or just placeholders are function-specfic. Even if the defaults actually apply, the client needs to consult the documentation in order to ensure there are no non-default checks necessary.
+
+Secondly, "optional" always requires additional run-time checks which can be avoided by not using "optional".
+
+To put it differently, "optional in" creates more work for the callee, "optional out" creates more work for the caller, and "optional in/out" creates more work for both caller and callee.
+
+Sometimes there is no way around using "optional". But where it can be easily avoided, it should be done.
+
