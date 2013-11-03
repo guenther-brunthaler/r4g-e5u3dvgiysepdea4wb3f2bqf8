@@ -51,7 +51,7 @@ fake() {
 
 
 repo_update_only() {
-	test -n "$HAVE_BZR" && return
+	test -n "$HAVE_GIT" && return
 	fake "$1"
 }
 
@@ -137,7 +137,7 @@ then
 	die "Must be called from top-level source directory!"
 fi
 # Check whether version control tool is available.
-HAVE_BZR=; test -d .bzr && have_exe bzr && HAVE_BZR=Y
+HAVE_GIT=; test -d .git && have_exe git && HAVE_GIT=Y
 # Options used internally by Makefile_am.in.
 case $1 in
 	--makefile-header)
@@ -271,23 +271,7 @@ case $1 in
 	--detect-version)
 		FILE=$2
 		repo_update_only "$FILE"
-		system pwd
-		realpath "$REPLY"; CDIR=$REPLY
-		system bzr root
-		realpath "$REPLY"
-		test x"$CDIR" != x"$REPLY" && fake "$FILE"
-		system bzr revno; CURR_VER=$REPLY
-		system printf '\t '; WS=$REPLY
-		run bzr tags | run awk '
-			BEGIN { best_ver= "0.1"; latest_rev= 0; }
-			$2 ~ /^[0-9]+$/ {
-				if ($2 <= '"$CURR_VER"' && $2 >= latest_rev) {
-					latest_rev= $2;
-					best_ver= $1;
-				}
-			}
-			END { print(best_ver); }
-		' > "$FILE"
+		git describe --tags > "$FILE"
 		;;
 	--update-changelog)
 		FILE=$2

@@ -26,9 +26,9 @@ have_exe() {
 
 test -f autogen.sh || die "Must be called from top-level source directory!"
 # Check whether version control tool is available.
-HAVE_BZR=; test -d .bzr && have_exe bzr && HAVE_BZR=Y
+HAVE_GIT=; test -d .git && have_exe git && HAVE_GIT=Y
 # Options used internally by Makefile_am.in.
-test -n "$HAVE_BZR" && test -f current_version.txt \
+test -n "$HAVE_GIT" && test -f current_version.txt \
 	&& run rm current_version.txt
 run make -f Makefile_am.in top_srcdir=. \
 	Makefile.am configure.ac NEWS ChangeLog
