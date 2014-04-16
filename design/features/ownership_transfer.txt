@@ -20,7 +20,9 @@ Bit 2 (add 4 to digit value) if it is an "optional" parameter.
 
 For instance, "in/out" means bits 0 and 1 have to be set and bit 2 has to be clear, resulting in a binary number 011 and the corresponding integer expression 0 * 2 ^ 2 + 1 * 2 ^ 1 + 1 * 2 ^ 0, which evaluates to the integer value 3.
 
-The actual name mangling consists of appending a suffix "_o<N>" to the name of the identifier, where "<N>" is the integer number.
+The actual name mangling consists of appending a suffix "_o<N>" to the name of function arguments, where "<N>" is the integer number.
+
+Function names may also be mangled on order to describe an ownership transfer via the primary function result. In this case name prefixes o<N>_ rather than suffixes are used.
 
 The above combinations can therefore be expressed by the following suffixes:
 
@@ -35,7 +37,7 @@ optional in/out | 1     | 1     | 1     | 7                  | "_o7"
 
 Combinations containing "in" are only suitable for function parameters.
 
-Function name suffixes only refer to the function's return value, and can thus only be "out" or "optional out", because a function's primary return value can only be an output.
+Function name prefixes can only be "out" or "optional out", because a function's primary return value can only be an output and never be an input to the function.
 
 The Semantics Of Ownership Transfer
 -----------------------------------
@@ -71,13 +73,13 @@ Nevertheless, the callee is *allowed* to set any "out"-parameters in case of a f
 
 Callees might explicitly set "out" parameters to invalid values in debugging versions of an executable in order to spot cases where the caller illegally tries to use them anyway. But this behavior is neither mandatory nor necessary in "release"-executables.
 
-Conversely, callers initialize "out"-values with invalid values in debugging executabled in order to detect whether the callee actually sets them to value values. But again, this is neither mandatory nor necessary in "release"-executables.
+Conversely, callers may initialize "out"-values with invalid values in "debug" executables in order to detect whether the callee actually sets them to some value as they should. But again, this is neither mandatory nor necessary in "release"-executables.
 
 All "out"-transfers of a particular function invocation are atomic: Either the function succeeds and all "out"-parameters are valid. Or the function fails/throws an exception and no "out"-parameters are valid.
 
 "in/out"-Transfer
 ~~~~~~~~~~~~~~~~~
-This is nothing than an optimization of letting an "in"-parameter and an "out"-parameter share the same function argument.
+This is nothing than an optimization of letting an "in"-parameter and an "out"-parameter use the same function argument at different times for different purposes.
 
 The caller allocates or creates an object, and passes ownership to the callee.
 
@@ -132,4 +134,3 @@ Secondly, "optional" always requires additional run-time checks which can be avo
 To put it differently, "optional in" creates more work for the callee, "optional out" creates more work for the caller, and "optional in/out" creates more work for both caller and callee.
 
 Sometimes there is no way around using "optional". But where it can be easily avoided, it should be done.
-

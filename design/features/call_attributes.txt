@@ -4,33 +4,46 @@ C++ supports declarators like throw() or "mutable" which C lacks.
 
 R4G uses a manual name-mangling scheme to encode such declarators into the function name, allowing the human reader of a source file to infer the associated semantics without a requirement to study the function's documentation for this purpose.
 
-The mangling consinst of adding a suffix "_c" (for "call attributes") to the end of the function name, being followed by a single digit encoding a combination of supported attributes.
+The mangling consist of adding a suffix "_c" (for "call attributes") to the end of the function name, being followed by a single digit encoding a combination of supported attributes.
 
 The digit calculates as follows (start with a value of 0):
-Bit 0 (add 1 to digit value) for "will never fail" functions.
+Bit 0 (add 1 to digit value) for functions which might throw exceptions.
 Bit 1 (add 2 to digit value) for "mutably constant" member functions.
 
-"Will never fail"-Functions
----------------------------
+Functions which might throw exceptions
+--------------------------------------
+Functions with a suffix of _c1 or _c3 do not require any particular error checking by the caller.
+
+They are expected never to return directly to the caller in case of an error.
 Function names with such a suffix refer to functions which cannot fail at all.
 
-They will never return error codes (unless returning an already determined error code is their only purpose) or throw exceptions.
+It is still possible for such a function to return particular error codes as part of their normal operation if this is documented.
 
-This call attribute is typically assigned to simply "get"-style member functions which only return values from the internal instance variables of an already existing object.
+But in addition to those particular error codes, other less specific errors may also arise and will then make the function throw an exception.
 
-Using this attribute normally also requires that no dynamic allocation will take place, because such allocations could always fail due to memory shortage.
+Normally however, functions with such a suffix will be "fire & forget" functions: The caller just uses them and does not need to check for any errors.
 
-To the caller, this attribute means that no checks are required whether the called function has failed. It never will.
+In outdated former versions of R4G bit # 0 had exactly the opposite meaning: To mark functions which would "never fail". Which means they would not throw exceptions or return error codes.
 
-To the callee, the attribute means that it must only use operations which cannot fail (unless catastrophic hardware failure occurs).
+The problem with that approach was that it was unclear whether a function without this suffix would throw exceptions, return error codes - or not.
 
-In particular, the result must be based on already-existing information. It may include calculations, but must not read information from external sources such as files or from the network which could always fail for a multitude of reasons.
+The latter was the case for all non-R4G functions and required all R4G functions to have some prefix to be distinguished from "normal" (non-R4G) functions.
+
+Therefore bit # 0 now marks explicit exception support, and has the added bonus of allowing to easily create names of "wrapper" functions by just adding the suffix - without also requiring a specific prefix.
+
+For instance, instead of having r4g_strdup() being an exception-aware wrapper for strdup as part of the R4G core helper libraries, now strdup_c1() does the same without requiring a library-specific prefix.
+
+This means the _c-Suffixes can be used by any function following R4G's concepts, whether they are part of the R4G framework itself or rather part of external / third party / application-specific custom code.
 
 "Mutably constant" Member Functions
 -----------------------------------
+R4G functions suffixed _c2 or _c3 promise not to change the "observable state" of the objects they operate on.
+
+That is, they will behave as if the object pointer was a const* in cases where it is not possible to actually use const pointers.
+
 C++ supports the "mutable" declarator to mark "external" fields which are physically part of a structure, but do not logically belong to it.
 
-A typical application are "const" objects in a internally-linked list.
+A typical application are "const" objects in an internally-linked list.
 
 The observable internal state of the objects will not change during the lifetime of the list, but new objects may be added to the list, resulting in changes of the internal linkage-pointer fields of the "constant" objects.
 
