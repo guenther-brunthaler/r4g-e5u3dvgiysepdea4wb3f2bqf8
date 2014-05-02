@@ -4,7 +4,7 @@ This feature will allow to replace "static" global variables in R4G applications
 
 The idea is somewhat similar to thread-local data, minus the threads.
 
-The pointer to the hash table will be passed around as port of the r4g structure which is passed through to every r4g function.
+The pointer to the hash table will be passed around as part of the r4g structure which is passed through to every r4g function.
 
 However, before implementing the global environment, the hash table shall be implemented as independent functions at first.
 
@@ -62,4 +62,3 @@ void r4g_setenv(r4g_envkey key, void *data);
 The first function retrieves the currently set data pointer associated with the specified key. The second function sets the data pointer.
 
 Both functions create the hash table entry if it does not yet exist, and initialize it as NULL in this case.
-

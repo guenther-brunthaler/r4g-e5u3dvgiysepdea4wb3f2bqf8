@@ -9,7 +9,7 @@ Therefore, the absence of an error message does not mean an exception is not an 
 
 Also, exceptions accompany no identifiying information such as error numbers which could be used to classify an exception into categories such as "error", "warning", "informational" etc.
 
-Exceptions have to "type", no class and are not part of any kind of inheritance hierarchy.
+Exceptions have no "type", no class and are not part of any kind of inheritance hierarchy.
 
 It is therefore neither possible to distinguish exception types from one another, nor determine whether an exception is actually an error or something else.
 

@@ -1,0 +1,6 @@
+New Ideas
+---------
+
+* "Catching exceptions" shall no longer be a special mechanism of the framework. Rather, exception handlers shall be implemented by resources. When the resource deallocator is called, it shall perform a non-local jump to the exception handler, either be longjmp(), signal() or throw. Alternatively, the deallocator could just call a handler function using a callback mechanism instead of performing a non-local jump. The details are not important any implementation shall be allowed, as long as it can be triggered by a resource cleanup deallocator.
+
+* Error messages shall be allocates as normal resources in a resource list, and shall not be treated special regarding its deallocation. The only obvious restriction is that such a resource must not be deallocated bevor the exception handler which wants to use it has been invoked. This can be arranged be inserting the error message resource in a position in the resource list before the exception handler resource, so that it will be deallocated later.

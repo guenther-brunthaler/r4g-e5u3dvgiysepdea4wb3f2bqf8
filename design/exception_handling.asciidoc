@@ -2,9 +2,15 @@ Exception Handling in Resource Control 4th Generation
 =====================================================
 Günther Brunthaler <gb@xquad.emgenxx69lwyn5ctlr4nl64ul.local>
 
-Real exceptions are anonymous
+Exceptions are a side effect of resource cleanup
+------------------------------------------------
+When a R4G function wants to throw an exception, it requires a resource context.
+
+Throwing an exception consists of optionally creating an error message resource and then calling a function for cleaning up the resources in the resource context which will never return.
+
+All exceptions are anonymous
 -----------------------------
-In r4g, all exceptions are anonymous.
+In R4G, all exceptions are anonymous.
 
 That is, there is no (intended) way of identify the "type" or "origin" of an exception - at least not in a way to be exploited by the program.
 
@@ -84,7 +90,7 @@ The "exception identification"-code
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Instead, the callee should replace the "exception catching code" in the "ok" field by an "exception identification code", which must also be negative and might also be the same as the "exception catching code".
 
-The callee must than return to the caller, returning an invalid or arbitrary return value which must not be used by the client.
+The callee must then return to the caller, returning an invalid or arbitrary return value which must not be used by the client.
 
 If no exception arises, the callee must change "ok" to any positive value (typically 1 but this is not required) if it was set to a negative value on entry.
 
@@ -139,4 +145,3 @@ The advantage of the "exception-less exception catching"-protocol is that it req
 It also allows "upgrading" callees which did not support "exception-less exception catching" before to do so in the future without breaking the API: Older callers will never use the protocol, but newer callers can.
 
 Also, the amount of supported exception catching codes can be increased, as long as it is done in a backwards-compatible way. (This is also the reason why callers need to check the exception idenfification codes exactly, throwing a "general exception" or "unexpected exception type" kind of message otherwise.)
-
