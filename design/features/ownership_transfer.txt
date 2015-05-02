@@ -45,7 +45,7 @@ In R4G, "ownership transfer" means that the ownerhip of a resource is passed fro
 
 "Resources" can be anything from allocated memory blocks over file handles to complex dynamically allocated objects.
 
-"Ownership" primarily refers to the responsibility of deallocating the resource, but may also imply other things like privileges and capabilities.
+"Ownership" primarily refers to the responsibility of deallocating the resource eventually, but may also imply other things like privileges and capabilities.
 
 "in"-Transfer
 ~~~~~~~~~~~~~
@@ -119,7 +119,7 @@ The semantics how to decide whether a parameter value refers to an existing reso
 
 Some defaults can be assumed unless the function documentation says otherwise.
 
-In particular, null-pointers may be passed instead of object addresses.
+In particular, null-pointers may be passed instead of object addresses, and the integer value -1 may be passed instead of UNIX-style file handles.
 
 For instance, a function like malloc() would be an ideal candidate for an "optional out" return value: It is either a valid allocated object which needs to be freed later using free(), or a NULL placeholder which does not need to be freed later using free().
 

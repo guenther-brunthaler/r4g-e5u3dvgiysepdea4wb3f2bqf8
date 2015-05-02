@@ -34,3 +34,7 @@ Instead, it allows to specify identifiers for code locations where the problems 
 Those identifiers are not useful for identifiying errors at run time either and will only be used as part of the error messages.
 
 But they are all a developer needs to know in order to locate exactly the particular code location which triggered an error message.
+
+Error identifiers serve a similar purpose as the "__LINE__" and "__FILE__" preprocessor constants, but will remain constant over the history of a project, and can more easily be tracked using version control systems.
+
+Also, "__LINE__" and "__FILE__" unnecessarily disclose organisational metadata about a software project to the user reading the error message, while an error identifier is intended to convey no implied meaning other than referencing the same relative source code location over time.

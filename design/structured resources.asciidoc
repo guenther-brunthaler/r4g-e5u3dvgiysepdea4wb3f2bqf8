@@ -1,0 +1,91 @@
+Resource construction and deconstruction
+========================================
+
+Previous versions of R4G only supported automated management of directly registered resources.
+
+For instance, when creating an array of dynamically allocated strings, this required a resource for the array and also a resource for dynamically allocated string within the array.
+
+This was memory-inefficient, because there existed at least two pointers to every array element: First the pointer within the allocated array itself, and then a pointer within its resource list node.
+
+Also, there was a problem how to register cleanup-handlers for objects which emulated C++ inheritance mechanisms in C. Such objects typically consist of a base class object for which a cleanup handler already exist, but add additional instance variables which might need additional cleanup handling.
+
+In such cases, the only options were: Either register multiple cleanup handlers for the different parts of the same object in the resource list. Or write a completely new cleanup handler which duplicates the actions taken by the already-existing cleanup handlers, but combine them into a single handler.
+
+Both approaches were subobtimal, and therefore a new approach was designed.
+
+This new approach is explained here.
+
+It is basically a variation of the already implemented way how resource lists are deallocated.
+
+To reiterate, resource lists are not deallocated by running a loop over the resource list members, calling their deallocators in turn.
+
+Instead, resource lists are "flattened" by moving their entries out of the resource list and appending them at the end of the parent resource list, right after the resource list entry currently being deallocated itself.
+
+Then the now-empty resource list resource is *not* deallocated itself, but deallocation rather starts with the newest last entry of the parent resource list, which happens to be the last former element of the resource list which has just been moved to the parent resource list along with all the other members.
+
+After all members have been deallocated, the resource list resource is encountered again while deallocating. This time, however, the resource list is empty, and now it will actually be deallocated.
+
+This algorithm of iterative flattening a resource list instead of recursive processing it has many advantages.
+
+Firstly, it eliminates the possibility of exceeding the possible function call recursion depth, because deallocation is no longer iterative, no matter how deeply nested resource lists and sub-resource-lists are.
+
+Secondly, it allows interruption of the cleanup process at any time, such as by raising an exception within the deallocator, without losing any other resources than the one currently being deallocated (which obviously failed, or there would have been no exception).
+
+The idea of structured construction and deconstruction of objects is to apply the same basic idea to normal objects as well, and not just to resource lists.
+
+For instance, to deallocate the dynamically allocated array of dynamically allocated memory blocks mentioned above as an example, the deallocator would work iteratively on the array.
+
+For each invocation, a single element of the array would be deallocated, but the array resource would not be removed from the resource list until there are no more elements in the array. Only then the array resource itself is deallocated and removed from the resource list.
+
+However, this approach is still not good enough, because the array container would need specific knowledge how to deallocate a single member.
+
+This might lead to duplication of code, because cleanup functions which have this knowledge already build-in might already exist.
+
+Therefore, instead of deallocating some array member, the array deallocator should remove the member from the array and create a new resource representing the member as an atomic operation.
+
+That is, every time the array deallocator is called, the array should shrink by one element, and a new resource representing this element should be created as the newest member of the resource list instead.
+
+Because resource list deallocation is iterative, the next resource to be deallocated will be this new resource. And after this, the array deallocator will be called again, shrinking the array by another element - until the array is finally empty. Only then the array resource itself will be deallocated and removed from the resource list.
+
+Inherited objects, consisting of base objects and additional layers of extension instance variables shall be handled in a similar way.
+
+When the deallocator for such an object is called, it shall first convert the object into a list of subobject destructors and, in case of a dynamically allocated object only, in a memory deallocator after all the destructors have already been called.
+
+This can, for instance, be implemented by temporarily creating a state variable which tracks the extent to which subobjects have already been destroyed, scheduling destruction of the next subobject every time it is called iteratively.
+
+In both cases, there is a catch, however: How to guarantee that enough memory is available to create the additional resource list entry for the iteratively removed member element, or for allocating the required state variable?
+
+Both cannot be allocated as local variables on the stack, because resource list processing is iterative, and the cleanup state must survive even exceptions being thrown via longjmp() and allow continuation of the interrupted cleanup later.
+
+This means, the temporary resources required for cleanup need to be dynamically allocated resources themselved, having been allocated *no later* than the resource which uses them.
+
+This means, they must either be part of the resource itself, or a separate older resource.
+
+The latter seems more appropriate, because it allows re-use of the resource in different cleanup handlers.
+
+For instance, no matter how many arrays like in the example above are present in a resource list, they can all share a single temporary resource list entry for "moving out" one element, as long as the arrays are not logically nested (i. e. not arrays of arrays).
+
+But what if there are actually nested arrays?
+
+Also, until now we have only been discussing destruction of layered resources.
+
+But such resources also need to be constructed before this, and construction is typically the reverse process of destruction.
+
+Which mean, the temporary helper resources needed for destruction might be required for construction as well!
+
+So, why not use the same resources for both construction and destruction?
+
+Then it is also quite clear when to allocate the helper resources: Right as the first step before actually creating the layered object.
+
+The helper objects assist in constructing the different layers or sub-objects during object construction, and will be re-used in object destruction as well.
+
+Unfortunately, we have some sort of chicken-and-egg-problem here: How should a container object find its helper resource?
+
+Because if we store a pointer in the container for that, we have added an instance variable to the container just for the sake of cleanup, which represents a memory overhead penalty for each array instance.
+
+But avoiding such an overhead has been the whole reason why separate helper objects were introduced in the first place!
+
+Obviously, the only way for a deallocator to find its helper resource without storing a reference within the object itself, consists of passing this information to the deallocator by its caller.
+
+Of course, now the question arises where the caller should get this information from.
+
