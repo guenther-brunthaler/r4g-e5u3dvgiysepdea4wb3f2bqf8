@@ -1,10 +1,10 @@
 Resource Control Framework, 4th Generation
 ==========================================
 Guenther Brunthaler <gb_about_gnu@gmx.net>
-v2020.18
+v2020.18.1
 
-(c) 2013-2020 by Guenther Brunthaler
-This project is free software.
+(c) 2013-2020 by Guenther Brunthaler +
+This project is free software. +
 Distribution is permitted under the terms of the LGPLv3.
 
 The *Resource Control Framework, 4th Generation*, referred to as 'R4G', is a generic framework for resource lifetime management and exception handling for the C programming language.
