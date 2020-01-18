@@ -1,62 +1,68 @@
-Resource Vector Framework Utilities
-===================================
+Resource Control Framework, 4th Generation
+==========================================
 Guenther Brunthaler <gb_about_gnu@gmx.net>
+v2020.18
 
-(c) 2013 by Guenther Brunthaler
+(c) 2013-2020 by Guenther Brunthaler
 This project is free software.
 Distribution is permitted under the terms of the LGPLv3.
 
-The resource-vector paradigm is a very simple way of automatically managing
-resources in a C program.
+The *Resource Control Framework, 4th Generation*, referred to as 'R4G', is a generic framework for resource lifetime management and exception handling for the C programming language.
 
-There is a single resizable array - the "resource vector" where cleanup
-functions for allocated resources can be appended. The vector will be
-reallocated as it grows.
+The UUID of the framework project is 'e5u3dvgiysepdea4wb3f2bqf8' and its current name is 'r4g'. (It might be renamed to 'r5g' some day, but the UUID will always remain the same.)
 
-The rvec_add() function adds user-defined cleanup functions to the vector.
+Every thread in a R4G application has a single thread-local (or global for single-threaded applications) `struct` variable `r4g` at its disposal, which only contains the most basic fields required by every r4g application.
 
-The rvec_free() function calls the cleanup functions in the vector in the
-reverse order the functions have been added (that is, from the end of the
-array towards the beginning).
+Optional fields are not stored directly within that structure, but rather via a generic extension extension mechanism.
 
-The array shrinks while rvec_free() is working.
+Most r4g library functions access the r4g variable directly or indirectly.
 
-It is possible to specify that rvec_free() should only deallocate resources
-until the resource vector has shrunk a certain minumum size.
+For performance reasons, the variable is always accessed directly, not via an abtraction layer such as a function which returns a pointer to that structure.
 
-By remembering the current vector size and later calling rvec_free() to shrink
-the array back to that former size, all newer resources will be deallocated
-while the older ones remain available.
+Only one such structure is supposed to exist per thread, and it is supposed to be shared between all libraries, to the extent that the implementation of dynamically-shared libraries makes this possible.
 
-Obviously, this scheme might fail horribly in a multithreading scenario, but
-it is very simple and well suited for typical command line applications.
+What is definitely not supposed to be supported is the existence of multiple r4g variables in the same code.
 
-The source files in this project implement the resource vector paradigm and
-provide resource wrappers for objects like files or memory buffers.
+Therefore, no pointers to the r4g structure need to be passed around ever. It is just accessed directly as required.
 
-How to use
-----------
+The r4g structure exposes the following well-known fields:
 
-* Copy the required source files to your project.
+int errors:: The number of errors occurred that have not been handled yet. 0 means no error at all. Negative numbers represent a saturated error count. For instance -100 means "100 or more errors have occurred" and such a saturated count will not be updated any more if additional errors occur. This variable is the only means of determining whether an error condition currently exists or not.
 
-* Don't forget to mention the copyright conditions and where the files came
-  from. It is not necessary to include the specific file names in the
-  attribution, because the files contain copyright comments themselves.
+char const *static_error_message:: This is null if no error message has been set of points to a statically allocated error message otherwise (typically a string constant). In is perfectly OK for an error condition to let this variable remain null, declaring it to be a "generic", "internal" or "anonymous" error.
 
-* The files are optimized for static linking without relying on function-level
-  linking support by the linkage editor. This means that only things which are
-  known to be used together have been put into the same source files. Things
-  which will only be required optionally have been put into separate source
-  files. This allows only to include the source files actually required by
-  your project. It is allowed to omit the remaining source files from your
-  distribution, as long as you provide a reference where the full set of files
-  can be obtained from.
+struct r4g_env *env:: This optional field is the core of the generic extension mechanism. The structure `r4g_env` is not defined anywhere globally, but will be defined by an implementation of the extension API. The only known thing is that this pointer will be initialized to null and every different value means that some implementation of the extension API has already seized control of the variable. This field may be missing if an implementation does not use it at all. However, under no circumstances should its existence depend on conditional compilation. When in doubt or in case of any linker conflicts, just define the field and do not use it.
 
-* All "public" header files (interfacing to your client code) contain a
-  base-35 encoded UUID as the last part of the names. The header files with
-  short names, if any, are only internal header files used by the framework
-  source files themselves.
+void (**rlist)(void):: This is the head of a singly-linked list of registered resources with associated cleanup handlers, the so-called "resource list". If this is null, then the resource list is empty. Otherwise, it points into the next resource object in the list, at the field where the pointer to the cleanup handler is stored.
 
-* All public header files contain an #include statement for including
-  themselves as a comment at the beginning of the file. This allows to easily
-  copy the #include directive into your source files from there.
+
+Usage of R4G in applications
+----------------------------
+
+* Unless for functions with the primary purpose of checking conditions, functions should never return to their caller if an error occurs. They should instead set an error condition first, all all cleanup-handlers in the resource-list, and exit(EXIT_FAILURE) last.
+
+* Setting an error condition means setting `r4g.errors` to a non-zero value, typically by incrementing it. In addition, a static error message may optionally be set in `r4g.static_error_message`. It is also possible to set a dynamically-allocated error message which will be displayed in preference to the statically allocated error message. What "setting an error condition" *not* means is actually displaying the error message (if any).
+
+* Dynamically allocated error messages are resources themselves and need to have a cleanup handler registered in the resource list. The dynamically allocated message can be set and retrieved via R4G API functions based on the generic extension mechanism provided via the `r4g.env` pointer.
+
+* Errors are displayed by cleanup handlers installed for this purpose. After displaying the error, they should set `r4g.errors` back to 0, flagging the error as 'handled' (which includes 'reported').
+
+* Errors are not intended to be "caught" like with `try`/`catch` in C++. Instead, cleanup handlers can be registered in the resource list and implement the `catch`-part after examining `r4g.errors` and finding that an error has occurred.
+
+* Recovering from errors. It is perfectly fine for cleanup handlers to use longjmp() to exit the resource cleanup prematurely and resume normal processing.
+
+* Non-standard exit codes. R4G error processing will call all resource cleanup handlers and then call exit(EXIT_FAILURE) in order to terminate the application. If a different argument to exit() is desired, a cleanup handler can be registered with calls exit() with the desired value and never exits. Obviously, such a cleanup handler should be the first one to be registered, because no further cleanup handlers will be called after it.
+
+* Resource cleanup handlers. For simplicity, no API function exists for registering and unregistering resource cleanup handlers, also called 'R4G destructors' or just 'dtors' for short. Instead, a new resource has to link itself into the list by saving the current `r4g.rlist`-pointer somewhere and placing the address of a pointer to its own cleanup function into `r4g.rlist`. Conversely, the cleanup handler should inlink itself from the resource list when the resource has been deallocated (or has been lost due to a deallocation failure). Dtors are simple `void some_name(void)` functions. They use `r4g.rlist` to obtain a pointer to the object which shall be destroyed.
+
+* Resource cleanup handler do not necessarily need to unlink themselves from the resource list. For instance, a resource could represent a container object for other resources. In this case every call to the cleanup handler may deallocate the next item of the container, but the container object itself will not unlink itself from the resource list before the container became empty.
+
+* Deallocation. When a cleanup handler is called, it has to determine the starting address of the resource object from the address of the field containing a pointer to the cleanup handler function, because this is where `r4g.rlist` always points to. Normally it will then try to unlink the resource object from the resource list first, and then try to deallocate the object.
+
+* Partial deallocation. The resource list is supposed to work like a stack, or rather a tree (because resources may also be containers for other resources). Normally, all resources will be deallocated when an error occurs or the before the applications exits. Freeing only parts of the resource list shall be freed, this can be implemente via two means: Either a cleanup handler is installed which stops the resource cleanup look prematurely, such be `longjmp`()ing out of it. Or a special version of the cleanup loop is used which stops once `r4g.rlist` equals that of a particular resource of interest.
+
+* Transactions. Resource cleanup handlers for database transactions or something similar can examine `r4g.errors` in order to determine whether to commit or rollback the current transaction.
+
+* Publicly defined types for R4G. Neither the type name of the structure represented by the r4g variable needs to be known, nor the actual definition of the `struct r4g_env` structure. However, some R4G API functions are known by name, and must then implemented as such.
+
+* R4G uses the naming conventions established in the project with UUID 'l7eabiq3jl9qjq36kjpgzpmum', initially called 'c_function_attributes'. This project can be found in a sibling repository of the R4G project. R4G's core API functions and their arguments are named according tho those conventions.
