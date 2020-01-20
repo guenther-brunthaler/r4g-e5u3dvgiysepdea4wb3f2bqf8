@@ -1,0 +1,3 @@
+See file README.adoc for more:
+
+$ fold -sw66 README.adoc

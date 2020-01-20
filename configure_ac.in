@@ -6,7 +6,7 @@ AC_INIT([Resource control, 4th generation], @69r83a0k7ji8x8tlyy2wu6s48@,
 	[Guenther Brunthaler <gb_about_gnu@gmx.net>],
 	[featuredev])
 AM_INIT_AUTOMAKE
-AC_CONFIG_SRCDIR([r4gstdio_tsq4kr2x9qnr3sh1jgkaaf8qg.h])
+AC_CONFIG_SRCDIR([dummy.c])
 AC_CONFIG_HEADERS([config.h])
 
 # Checks for programs.

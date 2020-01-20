@@ -2,7 +2,14 @@
  *
  * Resource Control Framework for C, 4th Generation.
  *
- * Version 2020.19
+ * If multi-threading support is required, the preprocessor symbol
+ * ENABLE_THREADS_8Y802YFBJ3A8H763I3XID022D must be defined whenever this
+ * header is being #included. This will make the <r4g>-variable thread-local
+ * and will work for every C11/C18 (or better) compiler, whether or not it
+ * supports <threads.h>. Otherwise, only one of the threads must use the R4G
+ * framework.
+ *
+ * Version 2020.20
  * Copyright (c) 2016-2020 Guenther Brunthaler. All rights reserved.
  * 
  * This source file is free software.
@@ -10,14 +17,6 @@
 
 #ifndef HEADER_U0YWYDBUIZIUZSSQSI5L0MDID_INCLUDED
 #define HEADER_U0YWYDBUIZIUZSSQSI5L0MDID_INCLUDED
-
-/* If multi-threading support is wanted, either define the following symbol
- * with a suitable declarator for thread local storage, or just
- * #include <threads.h> before this header file in order to automatically
- * make use of the C11+ multithreading support. */
-#ifndef thread_local
-   #define thread_local
-#endif
 
 #ifdef __cplusplus
    extern "C" {
@@ -63,7 +62,12 @@ struct resource_context_4th_generation {
 };
 
 /* This is the one well-known variable that everyone in R4G will be using. */
-extern thread_local struct resource_context_4th_generation r4g;
+extern
+   #ifdef ENABLE_THREADS_8Y802YFBJ3A8H763I3XID022D
+      _Thread_local
+   #endif
+   struct resource_context_4th_generation r4g
+;
 
 /* Defines a pointer variable to type resource_t and initializes it with a
  * pointer to the beginning of an object of type resource_t where <r4g.rlist>
@@ -72,13 +76,19 @@ extern thread_local struct resource_context_4th_generation r4g;
  * part of the variable definition after resource_t and before the
  * initialization value, such as "* my_ptr=".
  *
- * Example: R4G_DEFINE_INIT_RPTR(struct my_resource, *r=, dtor);
+ * Example: R4G_DEFINE_INIT_RPTR(struct minimal_resource, *r=, dtor);
  *
  * Note that you need to also #include <stddef.h> for actually using this. */
 #define R4G_DEFINE_INIT_RPTR(resource_t, var_eq, dtor_member) \
    resource_t var_eq (void *)( \
       (char *)r4g.rlist - offsetof(resource_t, dtor_member) \
    )
+
+/* An example of a mimimal complete resource object. */
+struct minimal_resource {
+   void (*dtor)(void); /* Cleanup function for this resource. */
+   void (**saved)(void); /* Saved <r4g.rlist> pointer of previous resource. */
+};
 
 /* Calls the destructor of the last entry in the specified resource list until
  * there are no more entries left. Destructors need to unlink their entries
@@ -88,7 +98,7 @@ extern thread_local struct resource_context_4th_generation r4g;
  * allocated on the stack somewhere, a longjmp can only be performed safely if
  * the destructors of all resources created since the setjmp() have already
  * been invoked. */
-void release_c1();
+void release_c1(void);
 
 /* Like release_c1() but stop releasing when resource <stop_at> would be
  * released next. The means all resources registered after <stop_at> will be
@@ -167,38 +177,45 @@ void *r4g_get_c0(char const (*bin_key)[17]);
  * have been null before. This allows r4g_put_c1() to function. This will
  * also add a destructor to the resource list for deallocating the table
  * and resetting <r4g.env> back to null. */
-void create_env_c5();
+void create_env_c5(void);
 
 /* Programs which want to support dynamically allocated error messages in
  * addition to statically allocated ones must call this function as soon as
  * possible, because setting dynamic error messages will only be possible
  * afterwards. This function will implicitly call create_env_c5() if
  * <r4g.enc> is null. */
-void create_dynamic_error_message_c5();
-
-/* Continue doing the remainder what prepare_error_c1() would have done if
- * it had not returned but rather done the same as error_c1(). In other
- * words, calling prepare_error_c1() immediately followed by
- * complete_error_c1() is the same as calling error_c1(). But between both
- * calls, the dynamically allocated error message can be modified and
- * extended, such as by incrementally appending additional optional
- * information to it. */
-void complete_error_c1();
+void create_dynamic_error_message_c5(void);
 
 /* If create_dynamic_error_message_c5() has never been called or if the
  * current build does not support dynamic error messages, just do exactly the
  * same as error_c1(). Otherwise, also do exactly the same as error_c1() would
- * do, but stop at point where error_c1() would call release_c1() and return
- * instead. This allows the caller to append additional information to the
- * current error message or post-process it in some way before actually
- * raising the error. */
+ * do, but stop at point where error_c1() would call release_c1() but return
+ * instead. This allows the caller call add_error_message_c1() or to
+ * post-process the dynamically allocated error message in some way before
+ * actually raising the error by calling raise_error_c1(). */
 void prepare_error_c1(char const *static_message);
+
+/* Call this only if prepare_error_c1() actually returned. This will add an
+ * error message as a new paragraph to the end of the dynamically allocated
+ * error message, making it the concatenation of the original and all
+ * follow-up error messages optionally up to some implementation-defined limit
+ * after which any attempts to add more messages will be silently ignored. */
+void add_error_message_c1(char const *error_message);
+
+/* Continue doing the remainder what prepare_error_c1() would have done if
+ * it had not returned but rather done the same as error_c1(). In other
+ * words, calling prepare_error_c1() immediately followed by
+ * raise_error_c1() is the same as calling error_c1(). But between both
+ * calls, the dynamically allocated error message can be modified and
+ * extended, such as by incrementally appending additional optional
+ * information to it. */
+void raise_error_c1(void);
 
 /* Sets the static error message to null and sets the dynamic error message
  * (if it exists and is supported by the current build) to an empty string.
  * Finally, set the current error count to zero. Call this after an error
  * message has been displayed. */
-void clear_error_c1();
+void clear_error_c1(void);
 
 
 #ifdef __cplusplus

@@ -1,9 +1,9 @@
 /*
- * #include <r4g/r4gstdio_tsq4kr2x9qnr3sh1jgkaaf8qg.h>
+ * #include <r4g/stdio_tsq4kr2x9qnr3sh1jgkaaf8qg.h>
  *
  * R4G aware ANSI C library stdio support.
  *
- * Version 2020.19
+ * Version 2020.20
  * (c) 2013-2020 by Guenther Brunthaler.
  * This source file is free software.
  * Distribution is permitted under the terms of the LGPLv3.
@@ -20,7 +20,6 @@
       extern "C" {
    #endif
 
-
    void vprintf_c1(char const *format, va_list args);
    void vfprintf_c1(FILE *stream, char const *format, va_list args);
    void printf_c1(char const *format, ...);
@@ -28,7 +27,6 @@
    void fputs_c1(char const *s, FILE *stream);
    void putchar_c1(int c);
    void puts_c1(char const *s);
-
 
    #ifdef __cplusplus
       }

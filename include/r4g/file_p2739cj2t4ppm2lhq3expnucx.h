@@ -1,5 +1,5 @@
 /*
- * #include <r4g/r4gfile_p2739cj2t4ppm2lhq3expnucx.h>
+ * #include <r4g/file_p2739cj2t4ppm2lhq3expnucx.h>
  *
  * R4G aware ANSI C library FILE* support.
  *

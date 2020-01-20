@@ -1,10 +1,12 @@
-# (c) 2013 by Guenther Brunthaler <gb_about_gnu@gmx.net>.
+# (c) 2013-2020 by Guenther Brunthaler <gb_about_gnu@gmx.net>.
 #
 # This script is free software.
 # Distribution is permitted under the terms of the LGPLv3.
 
+AM_CPPFLAGS = -I $(top_srcdir)/include
+
 EXTRA_DIST = autogen.sh config_helper.sh \
-	current_version.txt Makefile_am.in configure_ac.in
+	current_version.txt LICENSE.txt Makefile_am.in configure_ac.in
 
 current_version.txt: autogen.sh config_helper.sh
 	cd "$(top_srcdir)" && ./config_helper.sh --detect-version $@

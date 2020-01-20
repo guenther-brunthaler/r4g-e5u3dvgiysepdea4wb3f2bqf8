@@ -1,7 +1,8 @@
 #! /bin/sh
 # This script is invoked by some Makefile rules.
 #
-# (c) 2013 by Guenther Brunthaler <gb_about_gnu@gmx.net>.
+# Version 2020.20
+# (c) 2013-2020 by Guenther Brunthaler <gb_about_gnu@gmx.net>.
 #
 # This script is free software.
 # Distribution is permitted under the terms of the LGPLv3.
@@ -276,22 +277,14 @@ case $1 in
 	--update-changelog)
 		FILE=$2
 		repo_update_only "$FILE"
-		{
-			bzr log --gnu || run bzr log --short
-		} > "$FILE" 2> /dev/null
+		git2cl > "$FILE" 2> /dev/null
 		;;
 	--update-news)
 		FILE=$2
 		repo_update_only "$FILE"
-		run bzr log --long -r last:1 \
-			| run sed -e '
-				0,/^message:$/ !b
-				s/^mess.*//
-				t
-				/^tags\|time/ !d
-			' \
-			| run fmt -p "  " -w 77 \
-			| run sed -e 's,^ *,,' > "$FILE"
+		git log HEAD'~1'.. \
+			| sed '/^Date/,$ !d; s/[[:space:]]\{1,\}/ /g' \
+			| sed 's/^ //' > "$FILE"
 		;;
 	*)
 		die "Unsupported command '$1'!"
