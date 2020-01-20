@@ -1,7 +1,8 @@
 /*
  * Implementation of a context-environment as a trivial hash table.
  *
- * (c) 2013 by Guenther Brunthaler <gb_about_gnu@gmx.net>.
+ * Version 2020.20
+ * (c) 2013-2020 by Guenther Brunthaler <gb_about_gnu@gmx.net>.
  * This program is free software.
  * Distribution is permitted under the terms of the LGPLv3.
  */
@@ -14,12 +15,12 @@
 #define DUMP_TABLE 0
 
 #if DUMP_TABLE
-   #include "r4gstdio_tsq4kr2x9qnr3sh1jgkaaf8qg.h"
+   #include <r4g/r4gstdio_tsq4kr2x9qnr3sh1jgkaaf8qg.h>
    #include <inttypes.h>
 #endif
 #include "r4g_internals.h"
-#include "r4g_u0ywydbuiziuzssqsi5l0mdid.h"
-#include "r4gmem_8czm5ri1pjjnj3lr8wqq0a6li.h"
+#include <r4g/r4g_u0ywydbuiziuzssqsi5l0mdid.h>
+#include <r4g/r4gmem_8czm5ri1pjjnj3lr8wqq0a6li.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>

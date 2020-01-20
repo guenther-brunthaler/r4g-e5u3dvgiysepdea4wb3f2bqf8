@@ -1,19 +1,18 @@
 /*
- * (c) 2013 by Guenther Brunthaler.
+ * Version 2020.20
+ * (c) 2013-2020 by Guenther Brunthaler.
  * This source file is free software.
  * Distribution is permitted under the terms of the LGPLv3.
  */
-
 
 #ifdef HAVE_CONFIG_H
    #include "config.h"
 #endif
 #include <stdlib.h>
-#include "r4g_u0ywydbuiziuzssqsi5l0mdid.h"
-#include "r4gmem_8czm5ri1pjjnj3lr8wqq0a6li.h"
+#include <r4g/r4g_u0ywydbuiziuzssqsi5l0mdid.h>
+#include <r4g/r4gmem_8czm5ri1pjjnj3lr8wqq0a6li.h>
 
-
-extern void *r4ga_malloc(r4g *xc, size_t bytes) {
+extern void *o2_malloc_c1(size_t bytes) {
    void *p;
    if (!(p= malloc(bytes))) {
       r4g_die(

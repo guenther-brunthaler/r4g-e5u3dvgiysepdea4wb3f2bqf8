@@ -1,15 +1,11 @@
 /* #include <r4g/r4g_u0ywydbuiziuzssqsi5l0mdid.h>
  *
- * Resource Control Framework for C, 4th Generation.
+ * Resource control and error handling framework for C, 4th Generation ("R4G").
  *
- * If multi-threading support is required, the preprocessor symbol
- * ENABLE_THREADS_8Y802YFBJ3A8H763I3XID022D must be defined whenever this
- * header is being #included. This will make the <r4g>-variable thread-local
- * and will work for every C11/C18 (or better) compiler, whether or not it
- * supports <threads.h>. Otherwise, only one of the threads must use the R4G
- * framework.
+ * Some features of R4G are optional. This allows to build feature-reduced
+ * versions of the source files which have a smaller memory footprint.
  *
- * Version 2020.20
+ * Version 2020.20.1
  * Copyright (c) 2016-2020 Guenther Brunthaler. All rights reserved.
  * 
  * This source file is free software.
@@ -17,6 +13,21 @@
 
 #ifndef HEADER_U0YWYDBUIZIUZSSQSI5L0MDID_INCLUDED
 #define HEADER_U0YWYDBUIZIUZSSQSI5L0MDID_INCLUDED
+
+/* In order to enable optional R4G features, the associated ENABLE_*
+ * preprocessor symbols must be defined. The same set of features must be
+ * enabled for compiling all source files that #include the R4G headers for a
+ * particular program. This includes both the R4G framework implementation
+ * source files as well as the application source files using the framework.
+ *
+ * The desired set of ENABLE_* symbols can either be defined by passing an
+ * individual -D option for every symbol to the C preprocessor. */
+#ifdef HAVE_CONFIG_H
+   /* Or a #define directive for every desired preprocessor symbol can be
+    * added to the header file "config.h" and only option '-D HAVE_CONFIG_H'
+    * needs to be passed to preprocessor. */
+   #include "config.h"
+#endif
 
 #ifdef __cplusplus
    extern "C" {
@@ -48,26 +59,29 @@ struct resource_context_4th_generation {
     * static message will act as a fallback. If no error message has been set
     * at all, <errors> can still be reported as unspecific generic errors. */
    char const *static_error_message;
-   /* Pointer to a dynamically allocated lookup table managed by r4g_put()
-    * and r4g_get(). If it is null, r4g_put() will fail. The lookup table
-    * can be used to store pointers to arbitrary data, acting as a generic
-    * extension mechanism for associating arbitrary data with a resource
-    * context beyond the fields already defined here. */
-   struct r4g_env *env;
+   #ifdef ENABLE_R4G_ENV_2EQFV5P4VIKWF1GWAW8YJRLML
+      /* Pointer to a dynamically allocated lookup table managed by r4g_put()
+       * and r4g_get(). If it is null, r4g_put() will fail. The lookup table
+       * can be used to store pointers to arbitrary data, acting as a generic
+       * extension mechanism for associating arbitrary data with a resource
+       * context beyond the fields already defined here. */
+      struct r4g_env *env;
+   #endif
    /* Null if the resource list is empty, or the address within the last
-    * resource list entry where the pointer to its associated destructor
+    * resource list object where the pointer to its associated destructor
     * function is stored. Destructors need to locate the resource to be
     * destroyed using this address. */
    void (**rlist)(void);
 };
 
-/* This is the one well-known variable that everyone in R4G will be using. */
-extern
-   #ifdef ENABLE_THREADS_8Y802YFBJ3A8H763I3XID022D
-      _Thread_local
-   #endif
-   struct resource_context_4th_generation r4g
-;
+/* An example of a minimal complete resource object that can be linked into
+ * the <r4g.rlist> resource list. It can be shared by all resources that just
+ * need to register a cleanup function and do not need to store any
+ * object-specific data beyond what is defined here. */
+struct minimal_resource {
+   void (*dtor)(void); /* Cleanup function for this resource. */
+   void (**saved)(void); /* Saved <r4g.rlist> pointer of previous resource. */
+};
 
 /* Defines a pointer variable to type resource_t and initializes it with a
  * pointer to the beginning of an object of type resource_t where <r4g.rlist>
@@ -78,17 +92,28 @@ extern
  *
  * Example: R4G_DEFINE_INIT_RPTR(struct minimal_resource, *r=, dtor);
  *
+ * After this, <r> will be a pointer to the current resource, and the
+ * following assertion will be valid: assert(r4g.rlist == &r->dtor).
+ *
  * Note that you need to also #include <stddef.h> for actually using this. */
 #define R4G_DEFINE_INIT_RPTR(resource_t, var_eq, dtor_member) \
    resource_t var_eq (void *)( \
       (char *)r4g.rlist - offsetof(resource_t, dtor_member) \
    )
 
-/* An example of a mimimal complete resource object. */
-struct minimal_resource {
-   void (*dtor)(void); /* Cleanup function for this resource. */
-   void (**saved)(void); /* Saved <r4g.rlist> pointer of previous resource. */
-};
+/* This is the one well-known <r4g> variable that everyone in the R4G
+ * framework will be using. */
+extern
+   #ifdef ENABLE_THREADS_8Y802YFBJ3A8H763I3XID022D
+      /* Make the <r4g> variable thread-local rather than global. This will
+       * work with every C11/C18 (or better) compiler, whether or not it
+       * supports the optional <threads.h>. This is necessary if multiple
+       * threads want to use the R4G framework. Otherwise, only one of the
+       * threads can be selected to use the framework. */
+      _Thread_local
+   #endif
+   struct resource_context_4th_generation r4g
+;
 
 /* Calls the destructor of the last entry in the specified resource list until
  * there are no more entries left. Destructors need to unlink their entries
@@ -143,48 +168,60 @@ void release_until_c1(void (*last)(void));
  * the required return code. */
 void error_c1(char const *static_message);
 
-/* Associate an arbitrary pointer value <data> with a particular binary
- * lookup key in the <r4g.env> lookup table. The lookup table must already
- * exist.
- *
- * Note that the lookup table is not a hash table. It is like a hash table
- * without a hash function. This simplifies and speeds up things, but
- * requires the keys to be random as if they were the output of a hash
- * function.
- *
- * <bin_key> should therefore not be text but rather a null-terminated
- * array of bytes taken from /dev/random and put into the source code as a
- * null-terminated "C" string of octal escapes. This will minimize the
- * chance for lookup key collisions, which would be very bad, representing
- * a hard-to-find logic error in your program.
- *
- * The following POSIX shell command will generate and display a proper key
- * as a string literal:
- *
- * $ dd if=/dev/random bs=1 count=16|od -An -vto1|sed 's/ /\\/g;s/.*''/"&"/'
- *
- * This will output something like
- * "\162\041\037\303\112\022\230\210\050\262\236\146\073\332\106\317" which
- * would be a proper binary key argument. */
-void r4g_put_c1(char const (*bin_key)[17], void *data);
+#ifdef ENABLE_R4G_ENV_2EQFV5P4VIKWF1GWAW8YJRLML
+   /* Return the pointer value previously set by r4g_put() and the same key,
+    * or return null if no entry with a matching key is present or if no
+    * lookup table has been created yet. */
+   void *r4g_get_c0(char const (*bin_key)[17]);
 
-/* Return the pointer value previously set by r4g_put() and the same key,
- * or return null if no entry with a matching key is present or if no
- * lookup table has been created yet. */
-void *r4g_get_c0(char const (*bin_key)[17]);
+   /* Dynamically allocate a lookup table and set it as <r4g.env> which must
+    * have been null before. This allows r4g_put_c1() to function. This will
+    * also add a destructor to the resource list for deallocating the table
+    * and resetting <r4g.env> back to null. */
+   void create_env_c5(void);
 
-/* Dynamically allocate a lookup table and set it as <r4g.env> which must
- * have been null before. This allows r4g_put_c1() to function. This will
- * also add a destructor to the resource list for deallocating the table
- * and resetting <r4g.env> back to null. */
-void create_env_c5(void);
+   /* Associate an arbitrary pointer value <data> with a particular binary
+    * lookup key in the <r4g.env> lookup table. The lookup table must already
+    * exist.
+    *
+    * Note that the lookup table is not a hash table. It is like a hash table
+    * without a hash function. This simplifies and speeds up things, but
+    * requires the keys to be random as if they were the output of a hash
+    * function.
+    *
+    * <bin_key> should therefore not be text but rather a null-terminated
+    * array of bytes taken from /dev/random and put into the source code as a
+    * null-terminated "C" string of octal escapes. This will minimize the
+    * chance for lookup key collisions, which would be very bad, representing
+    * a hard-to-find logic error in your program.
+    *
+    * The following POSIX shell command will generate and display a proper key
+    * as a string literal:
+    *
+    * $ dd if=/dev/random bs=1 count=16|od -An -vto1|sed 's/ /\\/g;s/.*''/"&"/'
+    *
+    * This will output something like
+    * "\162\041\037\303\112\022\230\210\050\262\236\146\073\332\106\317" which
+    * would be a proper binary key argument. */
+   void r4g_put_c1(char const (*bin_key)[17], void *data);
 
-/* Programs which want to support dynamically allocated error messages in
- * addition to statically allocated ones must call this function as soon as
- * possible, because setting dynamic error messages will only be possible
- * afterwards. This function will implicitly call create_env_c5() if
- * <r4g.enc> is null. */
-void create_dynamic_error_message_c5(void);
+   #ifdef ENABLE_DYNAMIC_EMSG_9CLNE7FCEHSZA6PHICQUK1REF
+      /* Programs which want to support dynamically allocated error messages
+       * in addition to statically allocated ones must call this function as
+       * soon as possible, because setting dynamic error messages will only be
+       * possible afterwards. This function will implicitly call
+       * create_env_c5() if <r4g.enc> is null. */
+      void create_dynamic_error_message_c5(void);
+
+      /* Call this only if prepare_error_c1() actually returned. This will add
+       * an error message as a new paragraph to the end of the dynamically
+       * allocated error message, making it the concatenation of the original
+       * and all follow-up error messages optionally up to some
+       * implementation-defined limit after which any attempts to add more
+       * messages will be silently ignored. */
+      void add_error_message_c1(char const *error_message);
+   #endif /* !ENABLE_DYNAMIC_EMSG_9CLNE7FCEHSZA6PHICQUK1REF */
+#endif /* !ENABLE_R4G_ENV_2EQFV5P4VIKWF1GWAW8YJRLML */
 
 /* If create_dynamic_error_message_c5() has never been called or if the
  * current build does not support dynamic error messages, just do exactly the
@@ -194,13 +231,6 @@ void create_dynamic_error_message_c5(void);
  * post-process the dynamically allocated error message in some way before
  * actually raising the error by calling raise_error_c1(). */
 void prepare_error_c1(char const *static_message);
-
-/* Call this only if prepare_error_c1() actually returned. This will add an
- * error message as a new paragraph to the end of the dynamically allocated
- * error message, making it the concatenation of the original and all
- * follow-up error messages optionally up to some implementation-defined limit
- * after which any attempts to add more messages will be silently ignored. */
-void add_error_message_c1(char const *error_message);
 
 /* Continue doing the remainder what prepare_error_c1() would have done if
  * it had not returned but rather done the same as error_c1(). In other
@@ -216,7 +246,6 @@ void raise_error_c1(void);
  * Finally, set the current error count to zero. Call this after an error
  * message has been displayed. */
 void clear_error_c1(void);
-
 
 #ifdef __cplusplus
    }

@@ -1,14 +1,13 @@
-/*
- * (c) 2013 by Guenther Brunthaler.
+/* Version 2020.20
+ * (c) 2013-2020 by Guenther Brunthaler.
  * This source file is free software.
  * Distribution is permitted under the terms of the LGPLv3.
  */
 
-
 #ifdef HAVE_CONFIG_H
    #include "config.h"
 #endif
-#include "r4g_u0ywydbuiziuzssqsi5l0mdid.h"
+#include <r4g/r4g_u0ywydbuiziuzssqsi5l0mdid.h>
 #include "r4g_internals.h"
 #include <assert.h>
 #include <stdio.h>
@@ -16,6 +15,10 @@
 #include <stdarg.h>
 #include <string.h>
 
+#ifdef ENABLE_THREADS_8Y802YFBJ3A8H763I3XID022D
+   _Thread_local
+#endif
+struct resource_context_4th_generation r4g;
 
 static void free_context(r4g *xc, void *related_data) {
    struct r4g_internal *fc;
