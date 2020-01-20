@@ -5,7 +5,7 @@
  * Some features of R4G are optional. This allows to build feature-reduced
  * versions of the source files which have a smaller memory footprint.
  *
- * Version 2020.20.1
+ * Version 2020.20.2
  * Copyright (c) 2016-2020 Guenther Brunthaler. All rights reserved.
  * 
  * This source file is free software.
@@ -20,13 +20,14 @@
  * particular program. This includes both the R4G framework implementation
  * source files as well as the application source files using the framework.
  *
- * The desired set of ENABLE_* symbols can either be defined by passing an
- * individual -D option for every symbol to the C preprocessor. */
-#ifdef HAVE_CONFIG_H
-   /* Or a #define directive for every desired preprocessor symbol can be
-    * added to the header file "config.h" and only option '-D HAVE_CONFIG_H'
-    * needs to be passed to preprocessor. */
-   #include "config.h"
+ * The desired set of ENABLE_* symbols can either be defined with #define
+ * directives before THIS header file is included, or by passing an individual
+ * -D option for every symbol to the C preprocessor. */
+#ifdef R4G_CONFIG_H_7MPQXSRZEGRNW8FJHR4CYANWJ
+   /* An alternative is to put all the #define ENABLE_* directives into some
+    * header file and then only #define or -D a preprocessor symbol so that
+    * the following line will #include that header file automatically. */
+   #include R4G_CONFIG_H_7MPQXSRZEGRNW8FJHR4CYANWJ
 #endif
 
 #ifdef __cplusplus
