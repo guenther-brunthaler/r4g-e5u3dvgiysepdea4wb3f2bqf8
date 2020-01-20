@@ -2,7 +2,7 @@
  *
  * Resource Control Framework for C, 4th Generation.
  *
- * Version 2020.18
+ * Version 2020.19
  * Copyright (c) 2016-2020 Guenther Brunthaler. All rights reserved.
  * 
  * This source file is free software.
@@ -25,7 +25,7 @@
 
 /* The central data structure for the R4G framework. One instance exists per
  * application or thread. */
-thread_local struct resource_context_4th_generation {
+struct resource_context_4th_generation {
    /* The total number of errors which have occurred. A negative number means
     * at least that (negated) number of errors, expressing a saturated count
     * and avoiding that the number of errors shown gets too large. For
@@ -60,7 +60,10 @@ thread_local struct resource_context_4th_generation {
     * function is stored. Destructors need to locate the resource to be
     * destroyed using this address. */
    void (**rlist)(void);
-} r4g;
+};
+
+/* This is the one well-known variable that everyone in R4G will be using. */
+extern thread_local struct resource_context_4th_generation r4g;
 
 /* Defines a pointer variable to type resource_t and initializes it with a
  * pointer to the beginning of an object of type resource_t where <r4g.rlist>
